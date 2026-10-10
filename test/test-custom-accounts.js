@@ -49,12 +49,14 @@ function testValidate() {
 	console.log('== validateCustomAccount 输入校验 ==');
 	assertEq(validateCustomAccount(null).ok, false, 'null 输入 → 拒绝');
 	assertEq(validateCustomAccount({}).error, '请选择账号类型', '未知分类 → 提示选择类型');
-	assertEq(validateCustomAccount({ category: 'qoder' }).error, 'token 与 refresh_token 均必填', '缺凭证 → 必填提示');
+	assertEq(validateCustomAccount({ category: 'qoder' }).error, 'token 必填', '缺凭证 → 必填提示');
+	assertEq(validateCustomAccount({ category: 'qoder', token: 'dt-a' }).error, 'token 与 refresh_token 均必填', '缺 refresh_token（非 ZCode）→ 必填提示');
 	assertEq(validateCustomAccount({ category: 'workbuddy_x' }).error, '请选择账号类型', '不存在的分类 → 拒绝');
 
 	// Qoder 家族
 	assert(validateCustomAccount({ category: 'qoder', token: 'dt-abc', refresh_token: 'drt-abc' }).ok, 'qoder + dt-/drt- → 通过');
 	assert(validateCustomAccount({ category: 'qodercn', token: 'dt-abc', refresh_token: 'drt-abc' }).ok, 'qodercn → 通过');
+	assert(validateCustomAccount({ category: 'qoderapp', token: 'dt-abc', refresh_token: 'drt-abc' }).ok, 'qoderapp → 通过');
 	assert(validateCustomAccount({ category: 'qoder_intl', token: 'dt-abc', refresh_token: 'drt-abc' }).ok, 'qoder_intl → 通过');
 	assert(!validateCustomAccount({ category: 'qoder', token: 'dt-abc', refresh_token: 'bad' }).ok, 'refresh 无 drt- 前缀 → 拒绝');
 	assert(validateCustomAccount({ category: 'qoder', token: TRAE_JWT, refresh_token: 'drt-x' }).error.includes('切换为 Trae'), 'Qoder 分类收 JWT → 提示切换分类');
@@ -110,7 +112,34 @@ function testValidate() {
 	const acc = validateCustomAccount({ category: 'trae_cn', token: TRAE_JWT, refresh_token: 'r' }).account;
 	assert(/^c[0-9a-z]+$/.test(acc.id), 'id 为 c 前缀字符串（与平台数字 id 区分）');
 	assert(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(acc.created_at), 'created_at 为 YYYY-MM-DD HH:mm');
-	assertEq(Object.keys(CATEGORY_LABELS).length, 13, 'CATEGORY_LABELS 覆盖 13 个分类（含千问办公/Codex/Cursor/Kiro）');
+	assertEq(Object.keys(CATEGORY_LABELS).length, 20, 'CATEGORY_LABELS 覆盖 20 个分类（含千问办公/Codex/Cursor/Kiro/qoderapp/ZCode/Kimi/MiniMax/扣子/AutoClaw/豆包）');
+}
+
+// ---------- 纯函数：09-21 新增三分类（ZCode / Kimi Code / MiniMax Code）----------
+function testValidateNewPlatforms() {
+	console.log('== validateCustomAccount 新分类（zcode/kimi/minimax） ==');
+	const ZCODE_JWT = makeJwt('https://zcode.z.ai');
+	const KIMI_TOKEN = 'oauth-kimi-access-token-abcdefghijklmnop';
+
+	// ZCode：会话 JWT（refresh_token 可空；套餐授权 token 走 user_data）
+	assert(validateCustomAccount({ category: 'zcode', token: ZCODE_JWT, refresh_token: '' }).ok, 'zcode：仅会话 JWT（无 refresh）→ 通过');
+	assertEq(validateCustomAccount({ category: 'zcode', token: ZCODE_JWT, refresh_token: '' }).account.refresh_token, '', 'zcode：refresh_token 允许为空');
+	assert(validateCustomAccount({ category: 'zcode', token: 'notajwt', refresh_token: '' }).error.includes('zcodejwttoken'), 'zcode：非 JWT → 形态提示');
+	assert(validateCustomAccount({ category: 'zcode', token: 'dt-abc', refresh_token: 'drt-x' }).error.includes('切换为 Qoder'), 'zcode：收 Qoder 凭证 → 提示切换');
+	assert(validateCustomAccount({ category: 'zcode', token: CODEX_JWT, refresh_token: '' }).error.includes('Codex CLI'), 'zcode：收 Codex JWT → 误投拦截');
+	assert(validateCustomAccount({ category: 'zcode', token: TRAE_JWT, refresh_token: '' }).error.includes('Trae'), 'zcode：收 Trae JWT → 误投拦截');
+	assert(validateCustomAccount({ category: 'zcode', token: CB_INTL_JWT, refresh_token: '' }).error.includes('CodeBuddy'), 'zcode：收 CB JWT → 误投拦截');
+
+	// Kimi Code：OAuth 双凭证（无固定前缀，refresh 必填）
+	assert(validateCustomAccount({ category: 'kimi', token: KIMI_TOKEN, refresh_token: 'rt-kimi' }).ok, 'kimi：OAuth access_token + refresh → 通过');
+	assert(validateCustomAccount({ category: 'kimi', token: KIMI_TOKEN }).error.includes('均必填'), 'kimi：缺 refresh_token → 拒绝');
+	assert(validateCustomAccount({ category: 'kimi', token: 'dt-abc', refresh_token: 'drt-x' }).error.includes('切换为 Qoder'), 'kimi：收 Qoder 凭证 → 提示切换');
+	assert(validateCustomAccount({ category: 'kimi', token: CODEX_JWT, refresh_token: 'r' }).error.includes('Codex CLI'), 'kimi：收 Codex JWT → 误投拦截');
+
+	// MiniMax Code：同 Kimi 口径
+	assert(validateCustomAccount({ category: 'minimax', token: KIMI_TOKEN, refresh_token: 'rt-mm' }).ok, 'minimax：OAuth 双凭证 → 通过');
+	assert(validateCustomAccount({ category: 'minimax', token: 'has space token', refresh_token: 'r' }).error.includes('空白'), 'minimax：token 含空白 → 拒绝');
+	assert(validateCustomAccount({ category: 'minimax', token: CB_CN_JWT, refresh_token: 'r' }).error.includes('CodeBuddy'), 'minimax：收 CB JWT → 误投拦截');
 }
 
 // ---------- 增删查：mock store ----------
@@ -174,7 +203,7 @@ function testWiring() {
 
 	const html = readSrc(D('renderer/index.html'));
 	assert(html.includes('id="add-custom-btn"'), 'index.html: 添加按钮存在');
-	assert(html.includes('app.js?v=23'), 'index.html: app.js 缓存版本一致');
+	assert(html.includes('app.js?v=30'), 'index.html: app.js 缓存版本一致（v30 = 09-22 新增豆包工作平台）');
 
 	const app = readSrc(D('renderer/js/app.js'));
 	assert(app.includes('function showAddCustomAccountModal'), 'app.js: 添加弹窗函数');
@@ -219,8 +248,8 @@ function testStripGuards() {
 
 	const libDir = require('path').join(__dirname, '..', 'lib');
 	const libFiles = require('fs').readdirSync(libDir).filter((f) => f.endsWith('.js'));
-	const allowed = ['api-client.js', 'cck-logger.js', 'codex-context.js', 'cursor-context.js', 'custom-accounts.js', 'kiro-context.js', 'local-store.js', 'net-helper.js', 'quota-checker.js', 'qwenwork-context.js', 'vscdb-secret.js'];
-	assertEq(libFiles.sort().join(','), [...allowed].sort().join(','), 'lib/ 仅含白名单 11 个模块（无 client-launcher/auth-v2/ip-switch 等）');
+	const allowed = ['api-client.js', 'autoclaw-context.js', 'cck-logger.js', 'codex-context.js', 'coze-context.js', 'cursor-context.js', 'custom-accounts.js', 'doubao-context.js', 'kimi-context.js', 'kiro-context.js', 'local-store.js', 'minimax-context.js', 'net-helper.js', 'quota-checker.js', 'qwenwork-context.js', 'vscdb-secret.js', 'zcode-context.js'];
+	assertEq(libFiles.sort().join(','), [...allowed].sort().join(','), 'lib/ 仅含白名单 16 个模块（含 09-21 新增 coze/autoclaw-context 只读模块，无 client-launcher/auth-v2/ip-switch 等）');
 }
 
 // ---------- API 双域名容灾（注入 mock net-helper/local-store 到 require.cache 后加载 api-client） ----------
@@ -307,6 +336,7 @@ async function testApiFailover() {
 async function main() {
 	testJwt();
 	testValidate();
+	testValidateNewPlatforms();
 	testStoreOps();
 	testWiring();
 	testStripGuards();

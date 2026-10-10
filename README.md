@@ -51,7 +51,7 @@
 | 家族 | 客户端 |
 |------|--------|
 | Qoder | Qoder Work CN / Qoder CN IDE / Qoder 国际版 |
-| Trae | Trae CN / TraeWork CN (SOLO) / Trae 国际版 |
+| Trae | TRAE CN（统一客户端，TraeCode CN / TraeWork CN 已合并）/ Trae 国际版 |
 | CodeBuddy | CodeBuddy/WorkBuddy / CodeBuddy 国际版 |
 | 其他 | 千问办公 / Codex CLI / Cursor IDE / Kiro IDE |
 
