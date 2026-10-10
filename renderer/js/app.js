@@ -211,23 +211,59 @@ function initMainViewEvents() {
 
 	// 添加自定义账号（自有凭证，仅存本机）
 	document.getElementById('add-custom-btn').addEventListener('click', showAddCustomAccountModal);
+
+	// 代理商页签：淘宝购买兑换卡（点链接系统浏览器打开，复制按钮写剪贴板并提示在淘宝 App 打开）
+	document.querySelectorAll('.agent-taobao-link').forEach((a) => {
+		a.addEventListener('click', (e) => {
+			e.preventDefault();
+			window.electronAPI.openExternal(a.dataset.url);
+		});
+	});
+	document.querySelectorAll('.agent-copy-btn').forEach((btn) => {
+		btn.addEventListener('click', async () => {
+			const url = btn.dataset.url;
+			let ok = false;
+			try { await navigator.clipboard.writeText(url); ok = true; } catch {}
+			if (!ok) {
+				try {
+					const ta = document.createElement('textarea');
+					ta.value = url;
+					ta.style.cssText = 'position:fixed;opacity:0';
+					document.body.appendChild(ta);
+					ta.select();
+					ok = document.execCommand('copy');
+					ta.remove();
+				} catch {}
+			}
+			if (ok) toast('链接已复制，请在淘宝 App 中打开', 'success');
+			else toast('复制失败，请手动选中链接复制', 'error');
+		});
+	});
 }
 
 // ========== 账号分类 ==========
-const CATEGORY_NAMES = { qoder: 'Qoder Work CN', qodercn: 'Qoder CN IDE', qoder_intl: 'Qoder 国际版', trae_cn: 'Trae CN', trae_solo: 'TraeWork CN (SOLO)', trae_intl: 'Trae 国际版', codebuddy_cn: 'CodeBuddy/WorkBuddy', workbuddy: 'CodeBuddy/WorkBuddy', codebuddy_intl: 'CodeBuddy 国际版', qwenwork: '千问办公', codex: 'Codex CLI', cursor: 'Cursor IDE', kiro: 'Kiro IDE' };
+// 2026-10: Trae 官方把 TraeCode CN 与 TraeWork CN 合并为统一 TRAE CN 客户端 ——
+// trae_cn / trae_solo 两个账号分类对买家统一展示为 TRAE CN, 商城合并为一个 Tab
+const CATEGORY_NAMES = { qoder: 'Qoder Work CN', qodercn: 'Qoder IDE CN', qoderapp: 'Qoder CN', qoder_intl: 'Qoder 国际版', trae_cn: 'TRAE CN', trae_solo: 'TRAE CN', trae_intl: 'Trae 国际版', codebuddy_cn: 'CodeBuddy/WorkBuddy CN', workbuddy: 'CodeBuddy/WorkBuddy CN', codebuddy_intl: 'CodeBuddy 国际版', qwenwork: '千问办公', codex: 'Codex CLI', cursor: 'Cursor IDE', kiro: 'Kiro IDE', zcode: 'ZCode (智谱)', kimi: 'Kimi Code', minimax: 'MiniMax Code', coze: '扣子 (Coze)', autoclaw: 'AutoClaw (智谱)', doubao: '豆包工作平台 (Doubao)' };
 // 商城 Tab 家族分组与配色（仅前端视觉，按四家族着色：Qoder=蓝 / Trae=琥珀 / CodeBuddy=绿 / 独立=紫）
 const TAB_FAMILY = {
-	qoder: 'fam-qoder', qodercn: 'fam-qoder', qoder_intl: 'fam-qoder',
+	qoder: 'fam-qoder', qodercn: 'fam-qoder', qoderapp: 'fam-qoder', qoder_intl: 'fam-qoder',
 	trae_cn: 'fam-trae', trae_solo: 'fam-trae', trae_intl: 'fam-trae',
 	codebuddy_cn: 'fam-cb', codebuddy_intl: 'fam-cb',
 	qwenwork: 'fam-indep', codex: 'fam-indep', cursor: 'fam-indep', kiro: 'fam-indep',
+	zcode: 'fam-indep', kimi: 'fam-indep', minimax: 'fam-indep',
+	coze: 'fam-indep', autoclaw: 'fam-indep',
+	doubao: 'fam-indep',
 };
 // Tab 短标签（节省宽度，避免 12 个按钮拥挤；鼠标悬停 tooltip 显示全名）
 const TAB_SHORT = {
-	qoder: 'Qoder Work', qodercn: 'Qoder IDE', qoder_intl: 'Qoder 国际',
-	trae_cn: 'Trae CN', trae_solo: 'TraeWork CN (SOLO)', trae_intl: 'Trae 国际',
-	codebuddy_cn: 'CodeBuddy/WorkBuddy', codebuddy_intl: 'CB 国际',
+	qoder: 'Qoder Work CN', qodercn: 'Qoder IDE CN', qoderapp: 'Qoder CN', qoder_intl: 'Qoder 国际',
+	trae_cn: 'TRAE CN', trae_solo: 'TRAE CN', trae_intl: 'Trae 国际',
+	codebuddy_cn: 'CodeBuddy/WorkBuddy CN', codebuddy_intl: 'CB 国际',
 	qwenwork: '千问办公', codex: 'Codex', cursor: 'Cursor', kiro: 'Kiro',
+	zcode: 'ZCode', kimi: 'Kimi', minimax: 'MiniMax',
+	coze: '扣子', autoclaw: 'AutoClaw',
+	doubao: '豆包',
 };
 // CodeBuddy 与 WorkBuddy 凭证互通、积分通用(同一账号体系): 商城统一一个分类
 const isBuddyCat = (c) => c === 'codebuddy_cn' || c === 'workbuddy';
@@ -235,10 +271,17 @@ const isBuddyCat = (c) => c === 'codebuddy_cn' || c === 'workbuddy';
 // + 千问办公(阿里 QwenWork, qwenwork.cn, 积分制月度套餐刷新)
 // + Codex(OpenAI Codex CLI, chatgpt 账号体系, credits 积分/订阅双形态)
 // + Cursor(Anysphere IDE, api2.cursor.sh planUsage 美分额度, 月度计费周期重置)
-const isCreditsCat = (c) => isBuddyCat(c) || c === 'codebuddy_intl' || c === 'qwenwork' || c === 'codex' || c === 'cursor' || c === 'kiro';
+// + ZCode(智谱 Z.ai 编程套餐, 5h/周窗口滚动刷新) / Kimi Code(周窗口) / MiniMax Code(周期额度)
+// + 扣子(Coze 积分/资源点) / AutoClaw(智谱 GLM 编程套餐周期额度)
+const isCreditsCat = (c) => isBuddyCat(c) || c === 'codebuddy_intl' || c === 'qwenwork' || c === 'codex' || c === 'cursor' || c === 'kiro'
+	|| c === 'zcode' || c === 'kimi' || c === 'minimax'
+	|| c === 'coze' || c === 'autoclaw' || c === 'doubao';
 // Trae 国际版额度口径为 fast requests (非 credits)
 const isTraeIntlCat = (c) => c === 'trae_intl';
 const quotaUnit = (c) => (isCreditsCat(c) ? '积分' : isTraeIntlCat(c) ? 'fast requests' : 'credits');
+// 商城合并 Tab: Tab 分类 → 实际拉取的账号分类列表（10-10 Trae 官方合并客户端后, trae_solo 并入
+// 「TRAE CN」Tab 展示; 购买/额度仍按卡片各自分类走后端）
+const SHOP_TAB_AGGREGATION = { trae_cn: ['trae_cn', 'trae_solo'] };
 let currentShopCategory = 'qoder';
 
 // ========== 账号商城 ==========
@@ -250,7 +293,11 @@ async function loadShop() {
 	const tabContainer = document.getElementById('shop-category-tabs');
 	if (tabContainer) {
 		// 商城 Tab: CB/WB 凭证互通、积分通用, 统一一个「CodeBuddy/WorkBuddy」入口
-			const SHOP_TABS = ['qoder', 'qodercn', 'qoder_intl', 'trae_cn', 'trae_solo', 'trae_intl', 'codebuddy_cn', 'codebuddy_intl', 'qwenwork', 'codex', 'cursor', 'kiro'];
+		// 10-04: 下架国际版/海外平台分类——qoder_intl / trae_intl / codebuddy_intl / codex / cursor / kimi
+		//        （用户指令：商城不再销售这些分类；「添加自定义账号」弹窗仍保留，自有凭证可继续添加管理）
+		// 10-10: Trae 官方合并 TraeCode CN / TraeWork CN 为统一 TRAE CN 客户端 ——
+		//        商城只留一个「TRAE CN」Tab, 聚合 trae_cn + trae_solo 两个分类的库存
+			const SHOP_TABS = ['qoder', 'qodercn', 'qoderapp', 'trae_cn', 'codebuddy_cn', 'qwenwork', 'zcode', 'minimax', 'coze', 'autoclaw', 'doubao'];
 		// 紧凑药丸 chip + 家族配色：自动换行避免拥挤；激活态用家族色填充，未激活用家族色描边+色点，视觉上一眼分四组
 		tabContainer.innerHTML = SHOP_TABS.map(cat => {
 			const fam = TAB_FAMILY[cat] || 'fam-indep';
@@ -265,17 +312,26 @@ async function loadShop() {
 		});
 	}
 
-	const resp = await API.accounts.list(currentShopCategory);
-	if (!resp.success) {
-		listEl.innerHTML = `<div class="empty-state"><div class="icon">⚠</div>${escapeHtml(resp.error || '加载失败')}</div>`;
+	// 合并 Tab(如 TRAE CN = trae_cn + trae_solo)并行拉取各分类库存; 单分类失败不阻断其余展示
+	const fetchCats = SHOP_TAB_AGGREGATION[currentShopCategory] || [currentShopCategory];
+	const responses = await Promise.all(fetchCats.map((c) => API.accounts.list(c).catch(() => ({ success: false, error: '请求异常' }))));
+	if (!responses.some((r) => r.success)) {
+		const firstError = (responses.find((r) => !r.success) || {}).error || '加载失败';
+		listEl.innerHTML = `<div class="empty-state"><div class="icon">⚠</div>${escapeHtml(firstError)}</div>`;
 		return;
 	}
 
-	const accounts = resp.accounts || [];
+	// 聚合各分类卡片并标记来源分类(购买按钮携带, 后端按原分类结算), 按额度升序+价格升序排列
+	const accounts = [];
+	responses.forEach((resp, i) => {
+		if (!resp.success) return;
+		for (const a of resp.accounts || []) accounts.push(Object.assign({}, a, { _shopCat: fetchCats[i] }));
+	});
 	if (accounts.length === 0) {
 		listEl.innerHTML = '<div class="empty-state"><div class="icon">◈</div>暂无可购买账号</div>';
 		return;
 	}
+	accounts.sort((x, y) => (Number(x.plan_quota) - Number(y.plan_quota)) || (Number(x.price) - Number(y.price)));
 
 	listEl.innerHTML = accounts
 		.map(
@@ -284,16 +340,16 @@ async function loadShop() {
 			<div class="plan-name">${escapeHtml(a.plan_name || (a.plan_quota + '额度套餐'))}</div>
 			${currentShopCategory === 'qoder' && a.label ? `<div class="plan-label">${escapeHtml(a.label)}</div>` : ''}
 			<div class="plan-meta">
-					<span><span class="meta-label">${isCreditsCat(currentShopCategory) ? '积分' : '额度'}:</span> ${Number(a.plan_quota)} ${quotaUnit(currentShopCategory)}</span>
+					<span><span class="meta-label">${isCreditsCat(a._shopCat) ? '积分' : '额度'}:</span> ${Number(a.plan_quota)} ${quotaUnit(a._shopCat)}</span>
 				</div>
 			<div class="plan-price"><span class="unit">售价 </span>${a.discount && Number(a.original_price) > Number(a.price) ? `<s class="price-strike">${Number(a.original_price)}</s> ` : ''}${Number(a.price)}${a.discount ? ` <span class="promo-badge">${escapeHtml(String(a.discount_label || '促销'))}</span>` : ''}</div>
-			<button class="btn btn-primary btn-block purchase-btn" data-quota="${Number(a.plan_quota)}" data-name="${escapeHtml(a.plan_name || (a.plan_quota + '额度'))}">购买</button>
+			<button class="btn btn-primary btn-block purchase-btn" data-quota="${Number(a.plan_quota)}" data-name="${escapeHtml(a.plan_name || (a.plan_quota + '额度'))}" data-category="${a._shopCat}">购买</button>
 		</div>`,
 		)
 		.join('');
 
 	document.querySelectorAll('.purchase-btn').forEach((btn) => {
-		btn.addEventListener('click', () => purchaseAccount(parseInt(btn.dataset.quota, 10), btn.dataset.name, btn));
+		btn.addEventListener('click', () => purchaseAccount(parseInt(btn.dataset.quota, 10), btn.dataset.name, btn, btn.dataset.category));
 	});
 }
 
@@ -587,6 +643,15 @@ function updateQuotaDisplay(accountId, quota, banned, isCustom) {
 		el.innerHTML = `${planHtml}额度: <b>订阅套餐</b> <span class="text-dim">按 5 小时/周窗口限额（无剩余数值）</span>`;
 		return;
 	}
+	// 只有剩余、无总量口径（千问办公 Free 套餐网关返回 total/used 均为 null；Cursor 企业账号同理）
+	// → 只展示剩余，不渲染 used/total 与进度条（fmt(null) 会误显示「无限」，0/0 又与剩余自相矛盾）
+	// 判定须显式排除 null：Number(null)===0 且 isFinite(0)===true，用 isFinite 判会漏掉 null；
+	// total=Infinity（不限量账号）仍走下方完整展示分支（fmt 渲染为「无限」）
+	if (quota.remaining != null && (quota.total == null || Number.isNaN(Number(quota.total)))) {
+		el.innerHTML = `${planHtml}额度: <b>剩余 ${fmt(quota.remaining)}</b> ${escapeHtml(quota.unit || 'credits')}
+			<span class="text-dim">（平台未返回总量口径）</span>`;
+		return;
+	}
 	el.innerHTML = `${planHtml}额度: <b>${fmt(quota.used)}</b>/<b>${fmt(quota.total)}</b> ${escapeHtml(quota.unit || 'credits')}
 		<span class="text-dim">剩余 ${fmt(quota.remaining)}</span>
 		<span class="quota-bar"><span class="quota-bar-fill" style="width:${pct}%"></span></span>
@@ -710,17 +775,24 @@ async function checkQuota(accountId) {
 function showAddCustomAccountModal() {
 	const CATS = [
 		['qoder', 'Qoder Work CN'],
-		['qodercn', 'Qoder CN IDE'],
+		['qodercn', 'Qoder IDE CN'],
+		['qoderapp', 'Qoder CN App'],
 		['qoder_intl', 'Qoder 国际版'],
-		['trae_cn', 'Trae CN'],
-		['trae_solo', 'TraeWork CN (SOLO)'],
+		['trae_cn', 'TRAE CN'],
+		['trae_solo', 'TRAE CN (SOLO)'],
 		['trae_intl', 'Trae 国际版'],
-		['codebuddy_cn', 'CodeBuddy/WorkBuddy'],
+		['codebuddy_cn', 'CodeBuddy/WorkBuddy CN'],
 		['codebuddy_intl', 'CodeBuddy 国际版'],
 		['qwenwork', '千问办公'],
 		['codex', 'Codex CLI'],
 		['cursor', 'Cursor IDE'],
 		['kiro', 'Kiro IDE'],
+		['zcode', 'ZCode (智谱)'],
+		['kimi', 'Kimi Code'],
+		['coze', '扣子 (Coze)'],
+		['autoclaw', 'AutoClaw (智谱)'],
+		['doubao', '豆包工作平台 (Doubao)'],
+		['minimax', 'MiniMax Code'],
 	];
 	const overlay = document.createElement('div');
 	overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:1000';
@@ -766,7 +838,7 @@ function showAddCustomAccountModal() {
 	// 账号类型切换时同步凭证提示（Qoder 系 dt-/drt- 前缀，千问办公无固定前缀，其余为 JWT）
 	const syncLabels = () => {
 		const cat = overlay.querySelector('#cac-category').value;
-		const isQoder = cat === 'qoder' || cat === 'qodercn' || cat === 'qoder_intl';
+		const isQoder = cat === 'qoder' || cat === 'qodercn' || cat === 'qoderapp' || cat === 'qoder_intl';
 		const isQw = cat === 'qwenwork';
 		overlay.querySelector('#cac-token-label').textContent = isQoder ? 'Device Token (dt-xxx)' : isQw ? 'Access Token' : 'Access Token (JWT，eyJ 开头)';
 		overlay.querySelector('#cac-refresh-label').textContent = isQoder ? 'Refresh Token (drt-xxx)' : 'Refresh Token';

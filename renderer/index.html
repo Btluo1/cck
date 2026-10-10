@@ -56,6 +56,7 @@
 		<nav class="tab-bar">
 			<button class="main-tab active" data-view="shop">账号商城</button>
 			<button class="main-tab" data-view="my">我的账号</button>
+			<button class="main-tab" data-view="agents">代理商</button>
 		</nav>
 		<main class="content">
 			<!-- 账号商城 -->
@@ -79,12 +80,47 @@
 				</div>
 				<div id="my-list" class="account-list"></div>
 			</section>
+
+			<!-- 代理商 -->
+			<section id="agents-view" class="view-section">
+				<div class="section-header">
+					<h2>代理商 <span style="font-size:12px;font-weight:400;color:var(--text-dim)">兑换卡购买渠道</span></h2>
+				</div>
+				<div class="account-list">
+					<div style="padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--card);font-size:13px;line-height:1.8">
+						<div style="font-size:14px;font-weight:600;margin-bottom:8px">淘宝购买兑换卡</div>
+						<div style="color:var(--text-danger,#ef4444);margin-bottom:12px">复制链接后在淘宝 App 中打开，也可用手机淘宝扫下方二维码购买</div>
+						<div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;padding:10px;border:1px solid var(--border);border-radius:6px">
+							<img src="./assets/taobao-shop1.png" alt="店1 商品二维码" style="width:180px;height:180px;object-fit:contain;flex:0 0 auto;border-radius:6px;background:#fff">
+							<div style="flex:1;min-width:0">
+								<div style="display:flex;align-items:flex-start;gap:8px">
+									<span style="white-space:nowrap;line-height:28px;font-weight:600">店1：</span>
+									<a href="#" class="agent-taobao-link" data-url="https://h5.m.taobao.com/awp/core/detail.htm?ft=t&id=1067865742373" style="flex:1;word-break:break-all;line-height:28px;color:var(--primary,#3b82f6)">https://h5.m.taobao.com/awp/core/detail.htm?ft=t&id=1067865742373</a>
+									<button type="button" class="btn btn-sm agent-copy-btn" data-url="https://h5.m.taobao.com/awp/core/detail.htm?ft=t&id=1067865742373">复制</button>
+								</div>
+								<div style="font-size:12px;color:var(--text-dim);margin-top:6px">手机淘宝扫一扫，或复制链接到淘宝 App 打开</div>
+							</div>
+						</div>
+						<div style="display:flex;align-items:center;gap:14px;padding:10px;border:1px solid var(--border);border-radius:6px">
+							<img src="./assets/taobao-shop2.png" alt="店2 商品二维码" style="width:180px;height:180px;object-fit:contain;flex:0 0 auto;border-radius:6px;background:#fff">
+							<div style="flex:1;min-width:0">
+								<div style="display:flex;align-items:flex-start;gap:8px">
+									<span style="white-space:nowrap;line-height:28px;font-weight:600">店2：</span>
+									<a href="#" class="agent-taobao-link" data-url="https://h5.m.taobao.com/awp/core/detail.htm?ft=t&id=1060900775941" style="flex:1;word-break:break-all;line-height:28px;color:var(--primary,#3b82f6)">https://h5.m.taobao.com/awp/core/detail.htm?ft=t&id=1060900775941</a>
+									<button type="button" class="btn btn-sm agent-copy-btn" data-url="https://h5.m.taobao.com/awp/core/detail.htm?ft=t&id=1060900775941">复制</button>
+								</div>
+								<div style="font-size:12px;color:var(--text-dim);margin-top:6px">手机淘宝扫一扫，或复制链接到淘宝 App 打开</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
 		</main>
 	</div>
 
 	<!-- Toast 提示 -->
 	<div id="toast" class="toast"></div>
 
-	<script src="./js/app.js?v=23"></script>
+	<script src="./js/app.js?v=30"></script>
 </body>
 </html>
